@@ -1,23 +1,23 @@
 {
   "development": {
-    "username": "postgres",
+    "username": "appUser",
     "password": "root",
     "database": "ki_agentic_app",
-    "host": "localhost",
+    "host": "127.0.0.1",
     "dialect": "postgres"
   },
   "test": {
-      "username": "postgres",
+      "username": "appUser",
       "password": "root",
       "database": "ki_agentic_app",
-      "host": "localhost",
+      "host": "127.0.0.1",
       "dialect": "postgres"
   },
   "production": {
-      "username": "postgres",
+      "username": "appUser",
       "password": "root",
       "database": "ki_agentic_app_prod",
-      "host": "localhost",
+      "host": "127.0.0.1",
       "dialect": "postgres"
   }
 }
