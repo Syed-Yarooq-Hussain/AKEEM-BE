@@ -13,7 +13,7 @@ import { ProjectModule } from './project/project.module';
       dialect: 'postgres',
       host: process.env.DB_HOST || '127.0.0.1',
       port: Number(process.env.DB_PORT || 5432),
-      username: process.env.DB_USERNAME || 'appUser',
+      username: process.env.DB_USERNAME || 'appuser',
       password: 'root',
       database: process.env.DB_NAME || 'ki_agentic_app',
       models: SAAS_MODELS,
