@@ -1,36 +1,18 @@
-// auth.module.ts
-
+import 'dotenv/config';
 import { Module } from '@nestjs/common';
-import { PassportModule } from '@nestjs/passport';
-import * as OAuth2Strategy from 'passport-oauth2'; // Correct import statement
-import { JwtStrategy } from './jwt.stretegy';
 import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { Membership, Organization, Role, User } from '../../models';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { JwtStrategy } from './jwt.stretegy';
 
 @Module({
   imports: [
-    JwtModule.register({
-      secret: 'your-secret-key', // Replace with your secret key
-      signOptions: { expiresIn: '1h' }, // Set the expiration time as needed
-    }),PassportModule],
-  providers: [
-    {
-      provide: 'OAUTH2_STRATEGY',
-      useFactory: () => {
-        return new OAuth2Strategy(
-          {
-            authorizationURL: 'https://example.com/oauth2/authorize',
-            tokenURL: 'https://example.com/oauth2/token',
-            clientID: 'your-client-id',
-            clientSecret: 'your-client-secret',
-            callbackURL: 'http://localhost:3000/auth/callback',
-          },
-          (accessToken, refreshToken, profile, done) => {
-            return done(null, profile);
-          }
-        );
-      },
-    },
+    SequelizeModule.forFeature([User, Organization, Role, Membership]), PassportModule,
+    JwtModule.register({ secret: process.env.JWT_SECRET || 'development-only-change-this-secret', signOptions: { expiresIn: '1h' } }),
   ],
-  exports: [JwtModule]
+  controllers: [AuthController], providers: [AuthService, JwtStrategy], exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

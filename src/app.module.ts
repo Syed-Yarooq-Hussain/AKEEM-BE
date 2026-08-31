@@ -1,26 +1,29 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { UserModule } from './user/user.module';
-import { User } from '../models/user';  
-import { ModelCtor } from 'sequelize/types';
+import { SAAS_MODELS } from '../models';
 import { AuthModule } from './auth/auth.module';
 import { PassportModule } from '@nestjs/passport';
+import { CeoChatModule } from './ceo-chat/ceo-chat.module';
+import { ProjectModule } from './project/project.module';
 
 @Module({
   imports: [
     SequelizeModule.forRoot({
       dialect: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'root',
-      database: 'crystal_user',
-      autoLoadModels: true,
-      synchronize: true,
-      models: [User as any], // Use ModelCtor<Model> as the correct type
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT || 5432),
+      username: process.env.DB_USERNAME || 'postgres',
+      password: process.env.DB_PASSWORD || 'root',
+      database: process.env.DB_NAME || 'ki_agentic_app',
+      models: SAAS_MODELS,
+      autoLoadModels: false,
+      synchronize: process.env.DB_SYNC === 'true',
+      logging: process.env.DB_LOGGING === 'true' ? console.log : false,
     }),
     UserModule,
-    AuthModule, PassportModule
+    AuthModule, PassportModule, ProjectModule, CeoChatModule,
+    SequelizeModule.forFeature(SAAS_MODELS),
   ],
   controllers: [],
   providers: [],

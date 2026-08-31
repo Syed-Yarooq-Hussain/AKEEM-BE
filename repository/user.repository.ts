@@ -1,37 +1,11 @@
-import { User } from '../models/user';
-import { Sequelize } from 'sequelize';
+import { Injectable } from '@nestjs/common'; import { InjectModel } from '@nestjs/sequelize';
+import { User } from '../models'; import { BaseRepository } from './base.repository';
 
-class UserRepository {
-  private readonly userModel: typeof User;
-
-  constructor(sequelize: Sequelize) {
-      this.userModel = User;
-  }
-
-  async findAll(): Promise<User[] | null> {
-    return this.userModel.findAll();
-  }
-
-  async findById(id: number): Promise<User | null> {
-    return this.userModel.findByPk(id);
-  }
-
-  async findByEmail(email: string): Promise<User | null> {
-    return this.userModel.findOne({ where: { email } });
-  }
-
-  async createUser(userAttributes: Partial<any>): Promise<User> {
-    return this.userModel.create(userAttributes);
-  }
-
-  async updateUser(id: number, userAttributes: Partial<any>) {
-    return this.userModel.update(userAttributes, { where: { id } });
-  }
-
-  async deleteUser(id: number): Promise<number> {
-    const result = await this.userModel.destroy({ where: { id } });
-    return result;
-  }
+@Injectable()
+export class UserRepository extends BaseRepository<User> {
+  constructor(@InjectModel(User) model: typeof User) { super(model); }
+  findByEmail(email: string) { return this.findOne({ email: email.toLowerCase() }); }
+  createUser(values: Partial<User['_creationAttributes']>) { return this.create(values); }
+  updateUser(id: number, values: Partial<User['_attributes']>) { return this.updateById(id, values); }
+  deleteUser(id: number) { return this.destroyById(id); }
 }
-
-export { UserRepository };

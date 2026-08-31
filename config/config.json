@@ -2,21 +2,21 @@
   "development": {
     "username": "postgres",
     "password": "root",
-    "database": "crystal_user",
+    "database": "ki_agentic_app",
     "host": "localhost",
     "dialect": "postgres"
   },
   "test": {
       "username": "postgres",
       "password": "root",
-      "database": "crystal_user",
+      "database": "ki_agentic_app",
       "host": "localhost",
       "dialect": "postgres"
   },
   "production": {
       "username": "postgres",
       "password": "root",
-      "database": "crystal_user",
+      "database": "ki_agentic_app_prod",
       "host": "localhost",
       "dialect": "postgres"
   }

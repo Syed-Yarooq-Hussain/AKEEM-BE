@@ -6,7 +6,7 @@ import { CreateUserDto } from './dto/create-user-dto';
 import { AuthGuard } from '@nestjs/passport';
 
 
-@Controller('user')
+@Controller(['user', 'api/user'])
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -23,16 +23,16 @@ export class UserController {
   @Get(':id')
   @UseGuards(AuthGuard('oauth2'))
   findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
+    return this.userService.findOne(Number(id));
   }
 
   @Put(':id')
   update(@Param('id') id: string, @Body() updateUserDto: Partial<any>) {
-    return this.userService.update(+id, updateUserDto);
+    return this.userService.update(Number(id), updateUserDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+    return this.userService.remove(Number(id));
   }
 }

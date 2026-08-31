@@ -1,12 +1,10 @@
 export class CreateUserDto {
-    id: number
-    first_name: string;
-    last_name: string;
+    id?: number;
+    firstName: string;
+    lastName: string;
     email: string;
     phone: string;
-    password: string;
-    birthday: Date;
-    created_at: Date;
-    last_modified: Date;
+    passwordHash: string;
+    createdAt?: Date;
   }
   

@@ -1,20 +1,20 @@
-// auth.controller.ts
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { SignupDto } from './dto/signup.dto';
 
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-
-@Controller('auth')
+@ApiTags('Auth')
+@Controller(['auth', 'api/auth'])
 export class AuthController {
-  @Get('login')
-  @UseGuards(AuthGuard('oauth2'))
-  login() {
-    // Initiates the OAuth 2.0 authentication flow
-  }
+  constructor(private readonly authService: AuthService) {}
 
-  @Get('callback')
-  @UseGuards(AuthGuard('oauth2'))
-  callback(@Req() req, @Res() res) {
-    // Handles the OAuth 2.0 callback
-    res.redirect('/');
-  }
+  @Post('signup')
+  @ApiOperation({ summary: 'Create a user and SaaS organization' })
+  signup(@Body() dto: SignupDto) { return this.authService.signup(dto); }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login with email and password' })
+  login(@Body() dto: LoginDto) { return this.authService.login(dto); }
 }
