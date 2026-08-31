@@ -14,7 +14,7 @@ import { ProjectModule } from './project/project.module';
       host: process.env.DB_HOST || '127.0.0.1',
       port: Number(process.env.DB_PORT || 5432),
       username: process.env.DB_USERNAME || 'appUser',
-      password: process.env.DB_PASSWORD || 'root',
+      password: 'root',
       database: process.env.DB_NAME || 'ki_agentic_app',
       models: SAAS_MODELS,
       autoLoadModels: false,
