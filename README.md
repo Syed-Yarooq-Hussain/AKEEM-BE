@@ -1,73 +1,63 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# NexusFlow OS API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS and PostgreSQL backend for a multi-tenant AI business operating system. It includes authentication, projects, work management, CRM, Finance, approvals, automations, files, reports, notifications, administration, and a multi-agent chat runtime.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+The CEO chat can inspect organization/project data, delegate work to Finance, Sales, Marketing, Legal, Operations, Customer Success, or Executive specialists, run safe in-app actions, and return one consolidated result. Every delegation, model call, created resource, and token count is persisted for visibility.
 
-## Description
+## Requirements
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Node.js 20+
+- PostgreSQL
+- An OpenAI API key for chat and AI-task execution
 
-## Installation
+## Setup
 
 ```bash
-$ npm install
+npm install
+copy .env.example .env
+npm run db:migrate
+npm run start:dev
 ```
 
-## Running the app
+Set the database, JWT, frontend origin, and OpenAI values in `.env`. Both the
+Nest runtime and Sequelize CLI read `DB_HOST`, `DB_PORT`, `DB_USERNAME`,
+`DB_PASSWORD`, and `DB_NAME` from that file; there are no fallback database
+credentials. `DB_SYNC` should remain `false` outside disposable local
+development databases. Set `DB_SSL=true` when the database provider requires
+TLS.
+
+The API listens on `http://localhost:3000` by default. Swagger UI is available at `http://localhost:3000/api/docs`; its OpenAPI JSON is published at `http://localhost:3000/api/openapi.json`.
+
+## Commands
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run build
+npm test -- --runInBand
+npm run test:e2e
+npm run db:migrate
+npm run db:migrate:undo
+npm run qa:reset
 ```
 
-## Test
+## AI runtime
 
-```bash
-# unit tests
-$ npm run test
+Use `POST /api/ai/chat` for a contextual chat widget on any application page. Use `POST /api/ai/:assistant/chat` for direct department chat. `projectId` is optional for chat, so assistants can work in either a project or organization-wide context.
 
-# e2e tests
-$ npm run test:e2e
+The action runtime exposes only reversible or reviewable application actions: task creation, draft invoices, budgets, reports, approval requests, and CRM activities. It does not give models access to destructive operations, payment execution, invoice sending, credentials, or arbitrary code.
 
-# test coverage
-$ npm run test:cov
-```
+See [Frontend handoff resolution](docs/BACKEND_HANDOFF_RESOLUTION.md) for the
+verified fixes, discovery endpoints, report behavior, and QA setup. See
+[Frontend AI-agent integration](docs/FE_AI_AGENT_INTEGRATION.md) for TypeScript
+contracts and UI integration. See [Multi-agent chat and autonomous
+execution](docs/AI_ORCHESTRATION.md) for model overrides, delegation behavior,
+and the action safety policy. See [P1 API
+payloads](docs/FE_P1_API_PAYLOADS.md) for the rest of the backend.
 
-## Support
+## Main modules
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+- Auth and tenant isolation
+- Projects, tasks, and dashboard summaries
+- CRM companies, contacts, deals, and activities
+- Finance transactions, invoices, budgets, cash flow, and reports
+- AI agent directory, teams, conversations, messages, tasks, and delegations
+- Approvals, notifications, automations, files, reports, settings, and admin audit data

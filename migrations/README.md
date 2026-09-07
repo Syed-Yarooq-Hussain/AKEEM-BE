@@ -4,9 +4,9 @@ The canonical schema is defined by the Sequelize models in `../models`. The exec
 
 For a brand-new local PostgreSQL database:
 
-1. Create a database named `nexusflow_os`.
-2. Copy `.env.example` to `.env` and update the credentials.
+1. Create the PostgreSQL database that you will put in `DB_NAME`.
+2. Copy `.env.example` to `.env` and set all required `DB_*` values.
 3. Run the migration using Sequelize CLI, or set `DB_SYNC=true` only for quick local prototyping.
-4. Keep `DB_SYNC=false` in shared and cproduction environments.
+4. Keep `DB_SYNC=false` in shared and production environments.
 
 Every tenant-owned table carries `organization_id`. Auto-incrementing integer primary keys, timestamps and soft deletes are standardized by `BaseModel`. Join and audit tables intentionally retain their history.

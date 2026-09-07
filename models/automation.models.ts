@@ -40,6 +40,7 @@ export class KnowledgeDocument extends BaseModel<KnowledgeDocument> {
 @Table({ tableName: 'automations', underscored: true, paranoid: true })
 export class Automation extends BaseModel<Automation> {
   @ForeignKey(() => Organization) @Column(DataType.INTEGER) declare organizationId: number;
+  @Column(DataType.INTEGER) declare projectId?: number;
   @ForeignKey(() => User) @Column(DataType.INTEGER) declare createdById: number;
   @Column({ allowNull: false }) declare name: string; @Column declare description?: string;
   @Column({ type: DataType.JSONB, allowNull: false }) declare trigger: object; @Column({ type: DataType.JSONB, defaultValue: [] }) declare actions: object[];
@@ -95,4 +96,59 @@ export class AiAgentDelegation extends BaseModel<AiAgentDelegation> {
   @Column declare startedAt?: Date;
   @Column declare completedAt?: Date;
   @Column({ type: DataType.TEXT }) declare error?: string;
+}
+
+@Table({ tableName: 'ai_tasks', underscored: true, paranoid: true })
+export class AiTask extends BaseModel<AiTask> {
+  @ForeignKey(() => Organization) @Column(DataType.INTEGER) declare organizationId: number;
+  @Column(DataType.INTEGER) declare projectId: number;
+  @ForeignKey(() => AiAgent) @Column(DataType.INTEGER) declare agentId?: number;
+  @ForeignKey(() => User) @Column(DataType.INTEGER) declare createdById: number;
+  @Column({ allowNull: false }) declare title: string;
+  @Column({ type: DataType.TEXT }) declare description?: string;
+  @Column({ allowNull: false }) declare assistant: string;
+  @Column({ defaultValue: 'queued' }) declare status: string;
+  @Column({ defaultValue: 'medium' }) declare priority: string;
+  @Column({ defaultValue: 0 }) declare progress: number;
+  @Column declare dueDate?: Date;
+  @Column({ type: DataType.JSONB, defaultValue: {} }) declare input: object;
+  @Column({ type: DataType.JSONB, defaultValue: {} }) declare output: object;
+  @Column({ type: DataType.TEXT }) declare error?: string;
+  @Column({ defaultValue: 0 }) declare attemptCount: number;
+  @Column declare startedAt?: Date;
+  @Column declare completedAt?: Date;
+  @Column declare cancelledAt?: Date;
+}
+
+@Table({ tableName: 'approvals', underscored: true, paranoid: true })
+export class Approval extends BaseModel<Approval> {
+  @ForeignKey(() => Organization) @Column(DataType.INTEGER) declare organizationId: number;
+  @Column(DataType.INTEGER) declare projectId?: number;
+  @ForeignKey(() => User) @Column(DataType.INTEGER) declare requestedByUserId?: number;
+  @ForeignKey(() => AiAgent) @Column(DataType.INTEGER) declare requestedByAgentId?: number;
+  @ForeignKey(() => User) @Column(DataType.INTEGER) declare reviewedById?: number;
+  @Column({ allowNull: false }) declare title: string;
+  @Column({ allowNull: false }) declare type: string;
+  @Column({ type: DataType.DECIMAL(16, 2) }) declare amount?: number;
+  @Column({ defaultValue: 'USD' }) declare currency: string;
+  @Column({ defaultValue: 'pending' }) declare status: string;
+  @Column({ type: DataType.TEXT }) declare description?: string;
+  @Column({ type: DataType.TEXT }) declare reviewComment?: string;
+  @Column declare reviewedAt?: Date;
+  @Column({ type: DataType.JSONB, defaultValue: {} }) declare metadata: object;
+}
+
+@Table({ tableName: 'reports', underscored: true, paranoid: true })
+export class Report extends BaseModel<Report> {
+  @ForeignKey(() => Organization) @Column(DataType.INTEGER) declare organizationId: number;
+  @Column(DataType.INTEGER) declare projectId?: number;
+  @ForeignKey(() => User) @Column(DataType.INTEGER) declare createdById: number;
+  @ForeignKey(() => AiAgent) @Column(DataType.INTEGER) declare agentId?: number;
+  @Column({ allowNull: false }) declare title: string;
+  @Column({ allowNull: false }) declare assistant: string;
+  @Column({ defaultValue: 'generated' }) declare status: string;
+  @Column({ type: DataType.TEXT }) declare content?: string;
+  @Column declare format?: string;
+  @Column declare storageKey?: string;
+  @Column({ type: DataType.JSONB, defaultValue: {} }) declare metadata: object;
 }

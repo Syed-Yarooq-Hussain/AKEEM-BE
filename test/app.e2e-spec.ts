@@ -15,10 +15,17 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('protects the AI assistant directory', () => {
     return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+      .get('/api/ai/assistants')
+      .expect(401)
+      .expect(({ body }) => {
+        expect(body.success).toBe(false);
+        expect(body.code).toBe('UNAUTHORIZED');
+      });
   });
 });

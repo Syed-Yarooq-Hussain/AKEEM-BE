@@ -1,11 +1,10 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { User } from '../../models';
 import { UserRepository } from '../../repository/user.repository';
 
 @Injectable()
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
-
 
   async create(user: User): Promise<User> {
     return this.userRepository.createUser(user);

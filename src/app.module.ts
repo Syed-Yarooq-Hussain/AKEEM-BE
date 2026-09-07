@@ -1,31 +1,55 @@
 import { Module } from '@nestjs/common';
+import * as dotenv from 'dotenv';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { UserModule } from './user/user.module';
 import { SAAS_MODELS } from '../models';
 import { AuthModule } from './auth/auth.module';
 import { PassportModule } from '@nestjs/passport';
 import { CeoChatModule } from './ceo-chat/ceo-chat.module';
 import { ProjectModule } from './project/project.module';
+import { ApiResponseInterceptor } from './common/api-response.interceptor';
+import { ApiExceptionFilter } from './common/api-exception.filter';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { AiTaskModule } from './ai-task/ai-task.module';
+import { NotificationModule } from './notification/notification.module';
+import { ApprovalModule } from './approval/approval.module';
+import { AutomationModule } from './automation/automation.module';
+import { CrmModule } from './crm/crm.module';
+import { FinanceModule } from './finance/finance.module';
+import { FilesModule } from './files/files.module';
+import { SettingsModule } from './settings/settings.module';
+import { AdminModule } from './admin/admin.module';
+import { databaseConfig } from './config/database.config';
+
+dotenv.config();
 
 @Module({
   imports: [
     SequelizeModule.forRoot({
-      dialect: 'postgres',
-      host: process.env.DB_HOST || '127.0.0.1',
-      port: Number(process.env.DB_PORT || 5432),
-      username: process.env.DB_USERNAME || 'appuser',
-      password: 'root',
-      database: process.env.DB_NAME || 'ki_agentic_app',
+      ...databaseConfig(),
       models: SAAS_MODELS,
       autoLoadModels: false,
-      synchronize: process.env.DB_SYNC === 'true',
-      logging: process.env.DB_LOGGING === 'true' ? console.log : false,
     }),
-    UserModule,
-    AuthModule, PassportModule, ProjectModule, CeoChatModule,
+    AuthModule,
+    PassportModule,
+    ProjectModule,
+    DashboardModule,
+    AiTaskModule,
+    NotificationModule,
+    ApprovalModule,
+    AutomationModule,
+    CrmModule,
+    FinanceModule,
+    FilesModule,
+    SettingsModule,
+    AdminModule,
+    CeoChatModule,
     SequelizeModule.forFeature(SAAS_MODELS),
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    { provide: APP_INTERCEPTOR, useClass: ApiResponseInterceptor },
+    { provide: APP_FILTER, useClass: ApiExceptionFilter },
+  ],
 })
 export class AppModule {}

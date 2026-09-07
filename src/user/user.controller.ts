@@ -1,12 +1,22 @@
 // src/user/user.controller.ts
 
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user-dto';
 import { AuthGuard } from '@nestjs/passport';
 
-
 @Controller(['user', 'api/user'])
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -21,7 +31,6 @@ export class UserController {
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('oauth2'))
   findOne(@Param('id') id: string) {
     return this.userService.findOne(Number(id));
   }

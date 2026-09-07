@@ -71,3 +71,16 @@ export class Expense extends BaseModel<Expense> {
   @Column({ defaultValue: 'USD' }) declare currency: string; @Column declare expenseDate: Date; @Column({ defaultValue: 'pending' }) declare status: string;
   @Column declare receiptUrl?: string; @Column({ type: DataType.TEXT }) declare note?: string;
 }
+
+@Table({ tableName: 'budgets', underscored: true, paranoid: true })
+export class Budget extends BaseModel<Budget> {
+  @ForeignKey(() => Organization) @Column(DataType.INTEGER) declare organizationId: number;
+  @ForeignKey(() => Project) @Column(DataType.INTEGER) declare projectId?: number;
+  @ForeignKey(() => TransactionCategory) @Column(DataType.INTEGER) declare categoryId?: number;
+  @Column({ allowNull: false }) declare name: string;
+  @Column({ type: DataType.DECIMAL(16, 2), allowNull: false }) declare amount: number;
+  @Column({ defaultValue: 'USD' }) declare currency: string;
+  @Column declare periodStart: Date;
+  @Column declare periodEnd: Date;
+  @Column({ type: DataType.JSONB, defaultValue: {} }) declare metadata: object;
+}
