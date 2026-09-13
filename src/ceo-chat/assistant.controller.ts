@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CeoChatService } from './ceo-chat.service';
 import { CeoChatDto } from './dto/ceo-chat.dto';
 import { ConversationQueryDto } from './dto/conversation-query.dto';
@@ -24,7 +25,9 @@ import { isAssistant } from './assistant.config';
 @Controller(['ai/:assistant', 'api/ai/:assistant'])
 export class AssistantController {
   constructor(private service: CeoChatService) {}
-  @Post('chat') chat(
+  @Post('chat')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  chat(
     @Req() req,
     @Param('assistant') assistant: string,
     @Body() dto: CeoChatDto,

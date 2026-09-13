@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import * as dotenv from 'dotenv';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { SequelizeModule } from '@nestjs/sequelize';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { SAAS_MODELS } from '../models';
 import { AuthModule } from './auth/auth.module';
 import { PassportModule } from '@nestjs/passport';
@@ -20,11 +21,19 @@ import { FilesModule } from './files/files.module';
 import { SettingsModule } from './settings/settings.module';
 import { AdminModule } from './admin/admin.module';
 import { databaseConfig } from './config/database.config';
+import { RequestTimeoutInterceptor } from './common/request-timeout.interceptor';
+import { HealthModule } from './health/health.module';
 
 dotenv.config();
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: Number(process.env.RATE_LIMIT_TTL_MS || 60_000),
+        limit: Number(process.env.RATE_LIMIT_MAX || 120),
+      },
+    ]),
     SequelizeModule.forRoot({
       ...databaseConfig(),
       models: SAAS_MODELS,
@@ -44,10 +53,13 @@ dotenv.config();
     SettingsModule,
     AdminModule,
     CeoChatModule,
+    HealthModule,
     SequelizeModule.forFeature(SAAS_MODELS),
   ],
   controllers: [],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: RequestTimeoutInterceptor },
     { provide: APP_INTERCEPTOR, useClass: ApiResponseInterceptor },
     { provide: APP_FILTER, useClass: ApiExceptionFilter },
   ],

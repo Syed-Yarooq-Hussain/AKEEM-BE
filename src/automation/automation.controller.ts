@@ -14,6 +14,11 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AutomationService } from './automation.service';
+import {
+  CreateAutomationDto,
+  RunAutomationDto,
+  UpdateAutomationDto,
+} from './dto/automation.dto';
 @ApiTags('Automations')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -23,7 +28,7 @@ export class AutomationController {
   @Get() list(@Req() r, @Query('projectId') p?: string) {
     return this.s.list(r.user, p ? Number(p) : undefined);
   }
-  @Post() create(@Req() r, @Body() b: any) {
+  @Post() create(@Req() r, @Body() b: CreateAutomationDto) {
     return this.s.create(r.user, b);
   }
   @Get(':id') one(@Req() r, @Param('id', ParseIntPipe) id: number) {
@@ -32,17 +37,28 @@ export class AutomationController {
   @Patch(':id') update(
     @Req() r,
     @Param('id', ParseIntPipe) id: number,
-    @Body() b: any,
+    @Body() b: UpdateAutomationDto,
   ) {
     return this.s.update(r.user, id, b);
   }
   @Delete(':id') remove(@Req() r, @Param('id', ParseIntPipe) id: number) {
     return this.s.remove(r.user, id);
   }
-  @Post(':id/run') run(@Req() r, @Param('id', ParseIntPipe) id: number) {
-    return this.s.run(r.user, id);
+  @Post(':id/run') run(
+    @Req() r,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: RunAutomationDto,
+  ) {
+    return this.s.run(r.user, id, body);
   }
   @Get(':id/runs') runs(@Req() r, @Param('id', ParseIntPipe) id: number) {
     return this.s.runs(r.user, id);
+  }
+  @Post(':id/runs/:runId/retry') retryRun(
+    @Req() r,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('runId', ParseIntPipe) runId: number,
+  ) {
+    return this.s.retryRun(r.user, id, runId);
   }
 }

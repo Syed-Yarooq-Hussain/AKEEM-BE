@@ -6,11 +6,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { InjectConnection } from '@nestjs/sequelize';
 import { compare, hash } from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { Op } from 'sequelize';
+import { Sequelize } from 'sequelize-typescript';
+import { AcceptInvitationDto } from './dto/invitation.dto';
 import {
   Membership,
   Organization,
@@ -40,6 +43,7 @@ export class SettingsService {
     @InjectModel(Role) private readonly roles: typeof Role,
     @InjectModel(User) private readonly users: typeof User,
     private readonly email: EmailService,
+    @InjectConnection() private readonly sequelize: Sequelize,
   ) {}
 
   async organization(auth: AuthUser) {
@@ -117,6 +121,7 @@ export class SettingsService {
       tokenHash: createHash('sha256').update(token).digest('hex'),
       status: 'pending',
       expiresAt: new Date(Date.now() + 7 * 86400000),
+      lastSentAt: new Date(),
     });
     const value = invitation.toJSON() as Record<string, any>;
     delete value.tokenHash;
@@ -134,6 +139,189 @@ export class SettingsService {
         ? { invitationToken: token, invitationUrl }
         : {}),
     };
+  }
+
+  async inspectInvitation(token: string) {
+    const invitation = await this.validInvitation(token);
+    const [organization, role, existingUser] = await Promise.all([
+      this.orgs.findByPk(invitation.organizationId, {
+        attributes: ['id', 'name', 'logoUrl'],
+      }),
+      this.roles.findOne({
+        where: {
+          id: invitation.roleId,
+          organizationId: invitation.organizationId,
+        },
+        attributes: ['id', 'name'],
+      }),
+      this.users.findOne({
+        where: { email: invitation.email },
+        attributes: ['id'],
+      }),
+    ]);
+    if (!organization || !role) throw this.invalidInvitation();
+    return {
+      valid: true,
+      email: invitation.email,
+      existingUser: Boolean(existingUser),
+      expiresAt: invitation.expiresAt,
+      organization,
+      role,
+    };
+  }
+
+  async acceptInvitation(
+    body: AcceptInvitationDto,
+    authenticatedUserId?: number,
+  ) {
+    const tokenHash = this.invitationDigest(body.token);
+    return this.sequelize.transaction(async (transaction) => {
+      const invitation = await this.invitations.findOne({
+        where: { tokenHash },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      this.assertInvitationUsable(invitation);
+      if (
+        body.email &&
+        body.email.trim().toLowerCase() !== invitation.email.toLowerCase()
+      ) {
+        throw this.invalidInvitation();
+      }
+      const [organization, role] = await Promise.all([
+        this.orgs.findByPk(invitation.organizationId, { transaction }),
+        this.roles.findOne({
+          where: {
+            id: invitation.roleId,
+            organizationId: invitation.organizationId,
+          },
+          transaction,
+        }),
+      ]);
+      if (!organization || !role) throw this.invalidInvitation();
+
+      let user = await this.users.findOne({
+        where: { email: invitation.email.toLowerCase() },
+        transaction,
+      });
+      if (user) {
+        if (authenticatedUserId && authenticatedUserId !== user.id) {
+          throw new ForbiddenException('Invitation belongs to another user');
+        }
+        if (
+          !authenticatedUserId &&
+          (!body.password ||
+            !(await compare(body.password, user.passwordHash || '')))
+        ) {
+          throw new UnauthorizedException({
+            message: 'Sign in or provide the existing account password',
+            code: 'INVITATION_AUTH_REQUIRED',
+          });
+        }
+      } else {
+        if (
+          !body.firstName?.trim() ||
+          !body.lastName?.trim() ||
+          !body.password
+        ) {
+          throw new BadRequestException({
+            message:
+              'firstName, lastName and a password of at least 8 characters are required',
+            code: 'INVITATION_PROFILE_REQUIRED',
+          });
+        }
+        user = await this.users.create(
+          {
+            firstName: body.firstName.trim(),
+            lastName: body.lastName.trim(),
+            email: invitation.email.toLowerCase(),
+            passwordHash: await hash(body.password, 12),
+            emailVerifiedAt: new Date(),
+            status: 'active',
+            preferences: {},
+          },
+          { transaction },
+        );
+      }
+      if (user.status !== 'active') {
+        throw new ForbiddenException('User account is not active');
+      }
+      const [membership] = await this.memberships.findOrCreate({
+        where: {
+          organizationId: invitation.organizationId,
+          userId: user.id,
+        },
+        defaults: {
+          organizationId: invitation.organizationId,
+          userId: user.id,
+          roleId: invitation.roleId,
+          status: 'active',
+          invitedAt: invitation.createdAt,
+          joinedAt: new Date(),
+        },
+        transaction,
+      });
+      if (
+        membership.roleId !== invitation.roleId ||
+        membership.status !== 'active'
+      ) {
+        await membership.update(
+          { roleId: invitation.roleId, status: 'active', joinedAt: new Date() },
+          { transaction },
+        );
+      }
+      await invitation.update(
+        { status: 'accepted', acceptedAt: new Date() },
+        { transaction },
+      );
+      return {
+        accepted: true,
+        redirectTo: '/login?invitation=accepted',
+        organization: { id: organization.id, name: organization.name },
+        membership: {
+          id: membership.id,
+          roleId: membership.roleId,
+          role: role.name,
+          status: membership.status,
+        },
+        user: safeUser(user),
+      };
+    });
+  }
+
+  async resendInvitation(auth: AuthUser, id: number) {
+    this.owner(auth);
+    const invitation = await this.invitations.findOne({
+      where: { id, organizationId: auth.organizationId },
+    });
+    if (!invitation) throw new NotFoundException('Invitation not found');
+    if (invitation.status === 'accepted') {
+      throw new BadRequestException('Accepted invitations cannot be resent');
+    }
+    const token = randomBytes(32).toString('hex');
+    await invitation.update({
+      tokenHash: this.invitationDigest(token),
+      status: 'pending',
+      revokedAt: null,
+      acceptedAt: null,
+      expiresAt: new Date(Date.now() + 7 * 86400000),
+      lastSentAt: new Date(),
+      resentCount: Number(invitation.resentCount || 0) + 1,
+    });
+    return this.deliverInvitation(invitation, token);
+  }
+
+  async revokeInvitation(auth: AuthUser, id: number) {
+    this.owner(auth);
+    const invitation = await this.invitations.findOne({
+      where: { id, organizationId: auth.organizationId },
+    });
+    if (!invitation) throw new NotFoundException('Invitation not found');
+    if (invitation.status === 'accepted') {
+      throw new BadRequestException('Accepted invitations cannot be revoked');
+    }
+    await invitation.update({ status: 'revoked', revokedAt: new Date() });
+    return { id: invitation.id, revoked: true };
   }
 
   async memberRole(auth: AuthUser, id: number, body: any) {
@@ -244,6 +432,70 @@ export class SettingsService {
         }),
       ),
     );
+  }
+
+  private async validInvitation(token: string) {
+    if (!token || token.length < 32) throw this.invalidInvitation();
+    const invitation = await this.invitations.findOne({
+      where: { tokenHash: this.invitationDigest(token) },
+    });
+    this.assertInvitationUsable(invitation);
+    return invitation;
+  }
+
+  private assertInvitationUsable(
+    invitation: OrganizationInvitation | null,
+  ): asserts invitation is OrganizationInvitation {
+    if (!invitation) throw this.invalidInvitation();
+    if (
+      invitation.status !== 'pending' ||
+      invitation.acceptedAt ||
+      invitation.revokedAt
+    ) {
+      throw new BadRequestException({
+        message: 'Invitation has already been used or revoked',
+        code: 'INVITATION_NOT_ACTIVE',
+      });
+    }
+    if (new Date(invitation.expiresAt).getTime() <= Date.now()) {
+      throw new BadRequestException({
+        message: 'Invitation has expired',
+        code: 'INVITATION_EXPIRED',
+      });
+    }
+  }
+
+  private invalidInvitation() {
+    return new BadRequestException({
+      message: 'Invitation token is invalid',
+      code: 'INVITATION_INVALID',
+    });
+  }
+
+  private invitationDigest(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async deliverInvitation(
+    invitation: OrganizationInvitation,
+    token: string,
+  ) {
+    const value = invitation.toJSON() as Record<string, any>;
+    delete value.tokenHash;
+    const invitationUrl = `${process.env.FRONTEND_APP_URL || 'http://localhost:5173'}/accept-invitation?token=${encodeURIComponent(token)}`;
+    const organization = await this.orgs.findByPk(invitation.organizationId);
+    const delivered = await this.email.sendInvitation(
+      invitation.email,
+      invitationUrl,
+      organization?.name || 'AKEEM',
+    );
+    return {
+      ...value,
+      emailDelivered: delivered,
+      ...(process.env.NODE_ENV !== 'production'
+        ? { invitationToken: token, invitationUrl }
+        : {}),
+    };
   }
 
   private presentMembership(membership: Membership) {

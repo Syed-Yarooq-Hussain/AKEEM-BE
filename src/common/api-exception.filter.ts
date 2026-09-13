@@ -10,8 +10,10 @@ import {
 export class ApiExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const response = host.switchToHttp().getResponse();
-    const status =
-      exception instanceof HttpException
+    const uploadTooLarge = (exception as any)?.code === 'LIMIT_FILE_SIZE';
+    const status = uploadTooLarge
+      ? HttpStatus.PAYLOAD_TOO_LARGE
+      : exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
     const body: any =
@@ -19,14 +21,18 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const messages = Array.isArray(body?.message) ? body.message : [];
     const message =
       messages[0] ||
-      body?.message ||
+      (uploadTooLarge
+        ? 'Uploaded file exceeds the size limit'
+        : body?.message) ||
       (exception instanceof Error
         ? exception.message
         : 'Internal server error');
     response.status(status).json({
       success: false,
       message: status === 500 ? 'Internal server error' : message,
-      code: body?.code || this.codeFor(status, message),
+      code:
+        (uploadTooLarge ? 'FILE_TOO_LARGE' : body?.code) ||
+        this.codeFor(status, message),
       errors: messages,
     });
   }
@@ -39,6 +45,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
       403: 'FORBIDDEN',
       404: 'NOT_FOUND',
       409: 'CONFLICT',
+      413: 'PAYLOAD_TOO_LARGE',
+      429: 'RATE_LIMIT_EXCEEDED',
       422: 'BUSINESS_VALIDATION_ERROR',
     };
     return names[status] || 'INTERNAL_ERROR';

@@ -99,16 +99,16 @@ export class ProjectService {
   async update(auth: AuthUser, id: number, dto: UpdateProjectDto) {
     const project = await this.requireProject(auth, id);
     await this.validateRelations(auth.organizationId, dto);
-    if (
-      dto.startDate &&
-      dto.dueDate &&
-      new Date(dto.dueDate) < new Date(dto.startDate)
-    )
+    const startDate = dto.startDate
+      ? new Date(dto.startDate)
+      : project.startDate;
+    const dueDate = dto.dueDate ? new Date(dto.dueDate) : project.dueDate;
+    if (startDate && dueDate && new Date(dueDate) < new Date(startDate))
       throw new BadRequestException('dueDate must be on or after startDate');
     await project.update({
       ...dto,
-      startDate: dto.startDate ? new Date(dto.startDate) : project.startDate,
-      dueDate: dto.dueDate ? new Date(dto.dueDate) : project.dueDate,
+      startDate,
+      dueDate,
     });
     return this.present(project, auth);
   }

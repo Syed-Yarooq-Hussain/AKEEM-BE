@@ -5,7 +5,14 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
-import { Company, Contact, Deal, Pipeline, PipelineStage } from '../../models';
+import {
+  Company,
+  Contact,
+  Deal,
+  Membership,
+  Pipeline,
+  PipelineStage,
+} from '../../models';
 
 const DEFAULT_STAGES = [
   { name: 'Lead', position: 0, probability: 10, color: '#64748b' },
@@ -27,6 +34,7 @@ export class CrmService {
     @InjectModel(Pipeline) private readonly pipelinesModel: typeof Pipeline,
     @InjectModel(PipelineStage)
     private readonly stages: typeof PipelineStage,
+    @InjectModel(Membership) private readonly memberships: typeof Membership,
   ) {}
 
   async pipelines(auth: AuthUser) {
@@ -97,13 +105,19 @@ export class CrmService {
   }
 
   async create(auth: AuthUser, resource: string, body: any) {
+    body = this.editable(resource, body);
+    await this.validateRelations(auth, body);
     if (resource === 'deals') {
       const defaultData = await this.defaultPipeline(auth.organizationId);
+      const pipelineId = body.pipelineId || defaultData.pipeline.id;
       const stage = body.stageId
         ? await this.stages.findOne({
-            where: { id: body.stageId, pipelineId: defaultData.pipeline.id },
+            where: { id: body.stageId, pipelineId },
           })
-        : defaultData.stage;
+        : await this.stages.findOne({
+            where: { pipelineId },
+            order: [['position', 'ASC']],
+          });
       if (!stage)
         throw new UnprocessableEntityException(
           'Pipeline stage does not belong to the selected pipeline',
@@ -111,7 +125,7 @@ export class CrmService {
       return this.presentDeal(
         await this.deals.create({
           organizationId: auth.organizationId,
-          pipelineId: defaultData.pipeline.id,
+          pipelineId,
           stageId: stage.id,
           title: body.name || body.title,
           value: body.value || 0,
@@ -120,7 +134,9 @@ export class CrmService {
           contactId: body.contactId,
           ownerId: body.ownerId || auth.id,
           expectedCloseDate: body.expectedCloseDate,
-          status: 'open',
+          status: ['won', 'lost'].includes(stage.name.toLowerCase())
+            ? stage.name.toLowerCase()
+            : 'open',
         }),
       );
     }
@@ -138,9 +154,29 @@ export class CrmService {
 
   async update(auth: AuthUser, resource: string, id: number, body: any) {
     const value: any = await this.oneRaw(auth, resource, id);
+    body = this.editable(resource, body);
+    await this.validateRelations(auth, body);
     if (resource === 'deals' && body.name) {
       body.title = body.name;
       delete body.name;
+    }
+    if (
+      resource === 'deals' &&
+      (body.stageId !== undefined || body.pipelineId !== undefined)
+    ) {
+      const stage = await this.stages.findOne({
+        where: {
+          id: body.stageId ?? value.stageId,
+          pipelineId: body.pipelineId ?? value.pipelineId,
+        },
+      });
+      if (!stage)
+        throw new UnprocessableEntityException(
+          'Pipeline stage does not belong to the selected pipeline',
+        );
+      body.status = ['won', 'lost'].includes(stage.name.toLowerCase())
+        ? stage.name.toLowerCase()
+        : 'open';
     }
     await value.update(body);
     return resource === 'deals' ? this.presentDeal(value) : value;
@@ -227,6 +263,96 @@ export class CrmService {
     }[resource];
     if (!model) throw new NotFoundException('CRM resource not found');
     return model;
+  }
+
+  private editable(resource: string, body: any) {
+    this.model(resource);
+    const fields = {
+      companies: [
+        'name',
+        'domain',
+        'industry',
+        'phone',
+        'website',
+        'address',
+        'customFields',
+        'tags',
+      ],
+      contacts: [
+        'companyId',
+        'ownerId',
+        'firstName',
+        'lastName',
+        'email',
+        'phone',
+        'jobTitle',
+        'lifecycleStage',
+        'customFields',
+        'tags',
+      ],
+      deals: [
+        'name',
+        'title',
+        'pipelineId',
+        'stageId',
+        'companyId',
+        'contactId',
+        'ownerId',
+        'value',
+        'currency',
+        'expectedCloseDate',
+        'status',
+        'lostReason',
+      ],
+    }[resource];
+    return Object.fromEntries(
+      fields
+        .filter((key) => body?.[key] !== undefined)
+        .map((key) => [key, body[key]]),
+    );
+  }
+
+  private async validateRelations(auth: AuthUser, body: any) {
+    for (const [key, model] of [
+      ['companyId', this.companies],
+      ['contactId', this.contacts],
+      ['pipelineId', this.pipelinesModel],
+    ] as const) {
+      if (
+        body[key] != null &&
+        !(await (model as any).findOne({
+          where: { id: body[key], organizationId: auth.organizationId },
+        }))
+      )
+        throw new UnprocessableEntityException(
+          `${key} does not belong to your organization`,
+        );
+    }
+    if (
+      body.ownerId != null &&
+      !(await this.memberships.findOne({
+        where: {
+          userId: body.ownerId,
+          organizationId: auth.organizationId,
+          status: 'active',
+        },
+      }))
+    )
+      throw new UnprocessableEntityException(
+        'Owner must be an active organization member',
+      );
+    if (
+      body.value !== undefined &&
+      (!Number.isFinite(Number(body.value)) || Number(body.value) < 0)
+    )
+      throw new UnprocessableEntityException(
+        'Deal value must be a non-negative number',
+      );
+    if (
+      body.status !== undefined &&
+      !['open', 'won', 'lost'].includes(body.status)
+    )
+      throw new UnprocessableEntityException('Invalid deal status');
   }
 
   private async oneRaw(auth: AuthUser, resource: string, id: number) {

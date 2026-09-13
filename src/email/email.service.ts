@@ -56,6 +56,9 @@ export class EmailService {
           text: message.text,
           html: message.html,
         }),
+        signal: AbortSignal.timeout(
+          Number(process.env.EMAIL_TIMEOUT_MS || 10_000),
+        ),
       });
       if (!response.ok) {
         this.logger.error(`Email provider returned HTTP ${response.status}`);

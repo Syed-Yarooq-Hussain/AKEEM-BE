@@ -13,6 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FinanceService } from './finance.service';
+import { FinanceQueryDto } from './dto/finance-query.dto';
 @ApiTags('Finance')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -26,13 +27,13 @@ export class FinanceController {
   ) {
     return this.s.overview(r.user, p ? Number(p) : undefined, x);
   }
-  @Get('transactions') transactions(@Req() r, @Query() q: any) {
+  @Get('transactions') transactions(@Req() r, @Query() q: FinanceQueryDto) {
     return this.s.transactions(r.user, q);
   }
   @Post('transactions') createTransaction(@Req() r, @Body() b: any) {
     return this.s.createTransaction(r.user, b);
   }
-  @Get('invoices') invoices(@Req() r, @Query() q: any) {
+  @Get('invoices') invoices(@Req() r, @Query() q: FinanceQueryDto) {
     return this.s.invoices(r.user, q);
   }
   @Post('invoices') createInvoice(@Req() r, @Body() b: any) {
@@ -45,16 +46,16 @@ export class FinanceController {
   ) {
     return this.s.updateInvoice(r.user, id, b);
   }
-  @Get('budgets') budgets(@Req() r, @Query() q: any) {
+  @Get('budgets') budgets(@Req() r, @Query() q: FinanceQueryDto) {
     return this.s.budgets(r.user, q);
   }
   @Post('budgets') createBudget(@Req() r, @Body() b: any) {
     return this.s.createBudget(r.user, b);
   }
-  @Get('cash-flow') cashFlow(@Req() r, @Query() q: any) {
+  @Get('cash-flow') cashFlow(@Req() r, @Query() q: FinanceQueryDto) {
     return this.s.cashFlow(r.user, q);
   }
-  @Get('reports') reports(@Req() r, @Query() q: any) {
+  @Get('reports') reports(@Req() r, @Query() q: FinanceQueryDto) {
     return this.s.financeReport(r.user, q);
   }
 }

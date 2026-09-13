@@ -1,6 +1,13 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { Company, Contact, Deal, Pipeline, PipelineStage } from '../../models';
+import {
+  Company,
+  Contact,
+  Deal,
+  Membership,
+  Pipeline,
+  PipelineStage,
+} from '../../models';
 import { CrmController } from './crm.controller';
 import { CrmService } from './crm.service';
 @Module({
@@ -11,6 +18,7 @@ import { CrmService } from './crm.service';
       Deal,
       Pipeline,
       PipelineStage,
+      Membership,
     ]),
   ],
   controllers: [CrmController],

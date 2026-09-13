@@ -29,9 +29,11 @@ import { AssistantController } from './assistant.controller';
 import { CeoChatController } from './ceo-chat.controller';
 import { CeoChatService } from './ceo-chat.service';
 import { OrchestratorController } from './orchestrator.controller';
+import { FilesModule } from '../files/files.module';
 
 @Module({
   imports: [
+    FilesModule,
     SequelizeModule.forFeature([
       Organization,
       Project,

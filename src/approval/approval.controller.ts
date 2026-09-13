@@ -12,6 +12,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ApprovalService } from './approval.service';
+import { CreateApprovalDto, ReviewApprovalDto } from './dto/approval.dto';
 @ApiTags('Approvals')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -25,7 +26,7 @@ export class ApprovalController {
   ) {
     return this.s.list(r.user, p ? Number(p) : undefined, st);
   }
-  @Post() create(@Req() r, @Body() b: any) {
+  @Post() create(@Req() r, @Body() b: CreateApprovalDto) {
     return this.s.create(r.user, b);
   }
   @Get(':id') one(@Req() r, @Param('id', ParseIntPipe) id: number) {
@@ -34,14 +35,14 @@ export class ApprovalController {
   @Post(':id/approve') approve(
     @Req() r,
     @Param('id', ParseIntPipe) id: number,
-    @Body() b: any,
+    @Body() b: ReviewApprovalDto,
   ) {
     return this.s.review(r.user, id, 'approved', b?.comment);
   }
   @Post(':id/reject') reject(
     @Req() r,
     @Param('id', ParseIntPipe) id: number,
-    @Body() b: any,
+    @Body() b: ReviewApprovalDto,
   ) {
     return this.s.review(r.user, id, 'rejected', b?.comment);
   }

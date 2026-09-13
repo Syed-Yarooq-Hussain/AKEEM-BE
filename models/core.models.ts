@@ -175,4 +175,7 @@ export class OrganizationInvitation extends BaseModel<OrganizationInvitation> {
   @Column({ defaultValue: 'pending' }) declare status: string;
   @Column({ allowNull: false }) declare expiresAt: Date;
   @Column declare acceptedAt?: Date;
+  @Column declare revokedAt?: Date;
+  @Column({ defaultValue: 0 }) declare resentCount: number;
+  @Column declare lastSentAt?: Date;
 }

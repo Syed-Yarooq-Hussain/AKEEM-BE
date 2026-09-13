@@ -1,0 +1,21 @@
+[Unit]
+Description=AKEEM backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=akeem
+Group=akeem
+WorkingDirectory=/opt/akeem/backend
+EnvironmentFile=/etc/akeem/backend.env
+ExecStart=/usr/bin/node /opt/akeem/backend/dist/src/main.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

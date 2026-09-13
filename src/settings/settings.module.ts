@@ -9,6 +9,7 @@ import {
 } from '../../models';
 import { EmailModule } from '../email/email.module';
 import {
+  InvitationAcceptanceController,
   OrganizationController,
   UserSettingsController,
 } from './settings.controller';
@@ -25,7 +26,11 @@ import { SettingsService } from './settings.service';
     ]),
     EmailModule,
   ],
-  controllers: [OrganizationController, UserSettingsController],
+  controllers: [
+    OrganizationController,
+    InvitationAcceptanceController,
+    UserSettingsController,
+  ],
   providers: [SettingsService],
 })
 export class SettingsModule {}

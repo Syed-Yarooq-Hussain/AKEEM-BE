@@ -36,6 +36,7 @@ describe('user response security', () => {
       {} as any,
       {} as any,
       { sendInvitation: jest.fn() } as any,
+      {} as any,
     );
 
     const result = await service.members(auth);

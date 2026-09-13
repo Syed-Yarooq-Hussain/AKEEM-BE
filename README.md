@@ -41,6 +41,8 @@ npm run qa:reset
 
 ## AI runtime
 
+See [Agent team integration and local verification](docs/AGENT_TEAM_READINESS.md) for specialist-to-specialist handoffs, frontend progress tracking, and the latest verification scope.
+
 Use `POST /api/ai/chat` for a contextual chat widget on any application page. Use `POST /api/ai/:assistant/chat` for direct department chat. `projectId` is optional for chat, so assistants can work in either a project or organization-wide context.
 
 The action runtime exposes only reversible or reviewable application actions: task creation, draft invoices, budgets, reports, approval requests, and CRM activities. It does not give models access to destructive operations, payment execution, invoice sending, credentials, or arbitrary code.

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import {
+  AiConversation,
+  Automation,
   AiMessage,
   AutomationRun,
   Deal,
@@ -23,6 +25,8 @@ import { DashboardService } from './dashboard.service';
       Expense,
       Invoice,
       AiMessage,
+      AiConversation,
+      Automation,
       AutomationRun,
       Organization,
     ]),

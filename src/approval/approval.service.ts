@@ -1,10 +1,19 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { AiAgent, Approval, Project, User } from '../../models';
+import {
+  AiAgent,
+  Approval,
+  AuditLog,
+  Membership,
+  Project,
+  Role,
+  User,
+} from '../../models';
 @Injectable()
 export class ApprovalService {
   constructor(
@@ -12,8 +21,11 @@ export class ApprovalService {
     @InjectModel(Project) private projects: typeof Project,
     @InjectModel(User) private users: typeof User,
     @InjectModel(AiAgent) private agents: typeof AiAgent,
+    @InjectModel(Membership) private memberships: typeof Membership,
+    @InjectModel(AuditLog) private audits: typeof AuditLog,
   ) {}
   async list(a: any, p?: number, status?: string) {
+    if (p) await this.project(a, p);
     const w: any = { organizationId: a.organizationId };
     if (p) w.projectId = p;
     if (status) w.status = status;
@@ -51,7 +63,13 @@ export class ApprovalService {
     return this.present(x);
   }
   async review(a: any, id: number, status: string, comment?: string) {
+    await this.authorizeReviewer(a);
     const x = await this.raw(a, id);
+    if (x.requestedByUserId === a.id) {
+      throw new ForbiddenException(
+        'Requesters cannot review their own approval',
+      );
+    }
     if (x.status !== 'pending')
       throw new UnprocessableEntityException(
         'Approval has already been reviewed',
@@ -61,6 +79,21 @@ export class ApprovalService {
       reviewComment: comment,
       reviewedById: a.id,
       reviewedAt: new Date(),
+    });
+    await this.audits.create({
+      organizationId: a.organizationId,
+      actorId: a.id,
+      action: `approval.${status}`,
+      entityType: 'approval',
+      entityId: x.id,
+      before: { status: 'pending' },
+      after: {
+        status,
+        reviewedById: a.id,
+        reviewedAt: x.reviewedAt,
+        comment: comment || null,
+      },
+      metadata: { source: 'approval-review' },
     });
     return this.present(x);
   }
@@ -81,5 +114,28 @@ export class ApprovalService {
       if (ag) requestedBy = { id: ag.id, name: ag.name };
     }
     return { ...x.toJSON(), requestedBy };
+  }
+
+  private async project(a: any, projectId: number) {
+    const project = await this.projects.findOne({
+      where: { id: projectId, organizationId: a.organizationId },
+    });
+    if (!project)
+      throw new NotFoundException('Project not found in your organization');
+  }
+
+  private async authorizeReviewer(a: any) {
+    const membership = await this.memberships.findOne({
+      where: {
+        organizationId: a.organizationId,
+        userId: a.id,
+        status: 'active',
+      },
+      include: [Role],
+    });
+    const role = String((membership as any)?.role?.name || '').toLowerCase();
+    if (!['owner', 'admin', 'approver'].includes(role)) {
+      throw new ForbiddenException('Approval reviewer permission required');
+    }
   }
 }

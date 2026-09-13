@@ -94,9 +94,9 @@ Required production secrets and services:
   reset delivery.
 - PostgreSQL migrations must run with `DB_SYNC=false`.
 
-Automation runs still use the existing synchronous placeholder. Connecting a
-durable production queue/worker remains an infrastructure dependency; the API
-handoff does not claim that it is already durable.
+Automation runs now use the database-backed worker described in
+[Customer MVP integration](CUSTOMER_MVP_FE_INTEGRATION.md). Production must keep
+the worker enabled and run the customer MVP migration before processing jobs.
 
 ## Verification evidence
 

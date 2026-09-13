@@ -47,24 +47,33 @@ export class FinanceService {
       organizationId: a.organizationId,
       ...(projectId ? { projectId } : {}),
     };
-    const [revenue, expenses, cash, currency] = await Promise.all([
+    const [revenue, expenses, cashRows, currency] = await Promise.all([
       this.invoice.sum('amountPaid', { where: w }),
       this.expense.sum('amount', {
         where: { ...w, status: { [Op.notIn]: ['rejected', 'cancelled'] } },
       }),
-      this.transaction.sum('amount', {
-        where: { organizationId: a.organizationId, status: 'cleared' },
+      this.transaction.findAll({
+        where: { ...w, status: 'cleared' },
+        attributes: ['type', 'amount'],
       }),
       this.org.findByPk(a.organizationId),
     ]);
     const r = Number(revenue || 0),
       e = Number(expenses || 0);
+    const cash = cashRows.reduce(
+      (total, row) =>
+        total +
+        (row.type === 'expense'
+          ? -Number(row.amount || 0)
+          : Number(row.amount || 0)),
+      0,
+    );
     return {
       period,
       revenue: r,
       expenses: e,
       profit: r - e,
-      cashBalance: Number(cash || 0),
+      cashBalance: cash,
       currency: currency?.currency || 'USD',
       monthlyTrend: [
         {
@@ -76,6 +85,7 @@ export class FinanceService {
     };
   }
   async transactions(a: any, q: any) {
+    await this.project(a, q.projectId ? Number(q.projectId) : undefined);
     const p = this.page(q),
       w: any = { organizationId: a.organizationId };
     if (q.projectId) w.projectId = Number(q.projectId);
@@ -134,6 +144,7 @@ export class FinanceService {
     });
   }
   async invoices(a: any, q: any) {
+    await this.project(a, q.projectId ? Number(q.projectId) : undefined);
     const p = this.page(q),
       w: any = { organizationId: a.organizationId };
     if (q.projectId) w.projectId = Number(q.projectId);
@@ -208,9 +219,34 @@ export class FinanceService {
       where: { id, organizationId: a.organizationId },
     });
     if (!x) throw new NotFoundException('Invoice not found');
-    return x.update(b);
+    if (b.projectId) await this.project(a, Number(b.projectId));
+    const editable = [
+      'projectId',
+      'status',
+      'issueDate',
+      'dueDate',
+      'notes',
+      'amountPaid',
+      'paidAt',
+    ];
+    const update = Object.fromEntries(
+      editable
+        .filter((key) => b[key] !== undefined)
+        .map((key) => [key, b[key]]),
+    );
+    if (
+      b.amountPaid !== undefined &&
+      (!Number.isFinite(Number(b.amountPaid)) ||
+        Number(b.amountPaid) < 0 ||
+        Number(b.amountPaid) > Number(x.total))
+    )
+      throw new UnprocessableEntityException(
+        'amountPaid must be between zero and the invoice total',
+      );
+    return x.update(update);
   }
   async budgets(a: any, q: any) {
+    await this.project(a, q.projectId ? Number(q.projectId) : undefined);
     return this.budget.findAll({
       where: {
         organizationId: a.organizationId,
