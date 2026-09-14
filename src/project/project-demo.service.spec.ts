@@ -5,7 +5,20 @@ describe('Project demo seed guards', () => {
   const tx = { LOCK: { UPDATE: 'UPDATE' } };
   const database = { transaction: jest.fn((callback) => callback(tx)) };
   const service = new ProjectDemoService(database as any);
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it.each([0, -1, NaN, 2.5, 9007199254740992])(
+    'rejects invalid public project ID %s',
+    async (id) => {
+      const find = jest.spyOn(Project, 'findByPk');
+      await expect(service.seedPublic(id)).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(find).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects non-admin users before accessing data', async () => {
     database.transaction.mockClear();

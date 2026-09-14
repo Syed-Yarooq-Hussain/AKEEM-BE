@@ -17,24 +17,13 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectService } from './project.service';
 import { ProjectQueryDto } from './dto/project-query.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
-import { ProjectDemoService } from './project-demo.service';
 
 @ApiTags('Projects')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
 @Controller(['projects', 'api/projects'])
 export class ProjectController {
-  constructor(
-    private readonly projectService: ProjectService,
-    private readonly demoService: ProjectDemoService,
-  ) {}
-  @Post(':id/demo-data')
-  @ApiOperation({
-    summary: 'Insert synthetic project analysis data once (Owner/Admin only)',
-  })
-  seedDemo(@Req() request, @Param('id', ParseIntPipe) id: number) {
-    return this.demoService.seed(request.user, id);
-  }
+  constructor(private readonly projectService: ProjectService) {}
   @Post()
   @ApiOperation({ summary: 'Create a project in the current organization' })
   create(@Req() request, @Body() dto: CreateProjectDto) {

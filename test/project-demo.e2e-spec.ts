@@ -56,19 +56,12 @@ describe('Project demo API', () => {
       settings: { retained: true },
     });
     const url = `/api/projects/${project.id}/demo-data`;
-    await request(app.getHttpServer()).post(url).expect(401);
-    const invoke = () =>
-      request(app.getHttpServer())
-        .post(url)
-        .set('Authorization', `Bearer ${owner.accessToken}`)
-        .expect(201);
+    const invoke = () => request(app.getHttpServer()).post(url).expect(201);
     const responses = await Promise.all([invoke(), invoke()]);
     expect(responses.map((r) => r.body.data.alreadySeeded).sort()).toEqual([
       false,
       true,
     ]);
-    const result = responses[0].body.data;
-    expect(result.scenario.cashBalance).toBe(4000);
     const where = {
       projectId: project.id,
       organizationId: owner.organization.id,
@@ -84,5 +77,37 @@ describe('Project demo API', () => {
     expect(project.contactId).toBeTruthy();
     expect(project.dealId).toBeTruthy();
     expect((project.settings as any).retained).toBe(true);
+    expect((project.settings as any).demoDataSeed.scenario.cashBalance).toBe(
+      4000,
+    );
+  });
+
+  it('allows another project without a token or env setting and keeps project reads protected', async () => {
+    const project = await Project.create({
+      organizationId: owner.organization.id,
+      ownerId: owner.user.id,
+      name: 'Public seed test',
+      status: 'active',
+      settings: {},
+    });
+    const url = `/api/demo/projects/${project.id}/data`;
+    await request(app.getHttpServer())
+      .post('/api/projects/2147483647/demo-data')
+      .expect(404);
+    const response = await request(app.getHttpServer())
+      .post(url)
+      .send({ projectId: project.id + 1, organizationId: 999999 })
+      .expect(201);
+    expect(response.body.data.projectId).toBe(project.id);
+    expect(response.body.data.alreadySeeded).toBe(false);
+    expect(Object.keys(response.body.data).sort()).toEqual([
+      'alreadySeeded',
+      'message',
+      'projectId',
+    ]);
+    expect(await Budget.count({ where: { projectId: project.id } })).toBe(1);
+    await request(app.getHttpServer())
+      .get(`/api/projects/${project.id}`)
+      .expect(401);
   });
 });

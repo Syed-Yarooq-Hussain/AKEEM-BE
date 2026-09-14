@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
+import { Op } from 'sequelize';
 import {
   Approval,
   Budget,
@@ -24,11 +25,59 @@ import {
   Task,
   TaskAssignee,
   Transaction,
+  Membership,
+  Role,
+  User,
 } from '../../models';
 
 @Injectable()
 export class ProjectDemoService {
   constructor(@InjectConnection() private readonly database: Sequelize) {}
+
+  async seedPublic(id: number) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new NotFoundException('Project not found');
+    }
+    const project = await Project.findByPk(id);
+    if (!project || project.status === 'archived') {
+      throw new NotFoundException('Public demo project is unavailable');
+    }
+    const membership = await Membership.findOne({
+      where: { organizationId: project.organizationId, status: 'active' },
+      include: [
+        {
+          model: Role,
+          required: true,
+          where: {
+            organizationId: project.organizationId,
+            name: { [Op.in]: ['Owner', 'Admin'] },
+          },
+        },
+        { model: User, required: true, where: { status: 'active' } },
+      ],
+      order: [['id', 'ASC']],
+    });
+    if (!membership)
+      throw new ForbiddenException(
+        'Demo organization requires an active Owner or Admin',
+      );
+    const result = await this.seed(
+      {
+        id: membership.userId,
+        organizationId: project.organizationId,
+        role: membership.role.name,
+      },
+      id,
+    );
+    // Public callers receive no organization records or stored scenario details.
+    return {
+      projectId: id,
+      alreadySeeded: result.alreadySeeded,
+      message: result.alreadySeeded
+        ? 'Demo data already exists. Sign in to analyze this project.'
+        : 'Demo data created. Sign in and select this project to analyze it.',
+    };
+  }
 
   async seed(
     auth: { id: number; organizationId: number; role?: string },
