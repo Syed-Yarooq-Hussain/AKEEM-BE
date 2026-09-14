@@ -11,6 +11,7 @@ import {
 } from '../../models';
 import { ProjectController } from './project.controller';
 import { ProjectService } from './project.service';
+import { ProjectDemoService } from './project-demo.service';
 
 @Module({
   imports: [
@@ -25,6 +26,6 @@ import { ProjectService } from './project.service';
     ]),
   ],
   controllers: [ProjectController],
-  providers: [ProjectService],
+  providers: [ProjectService, ProjectDemoService],
 })
 export class ProjectModule {}
