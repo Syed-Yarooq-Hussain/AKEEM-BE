@@ -6,6 +6,7 @@ import {
 import { InjectConnection } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { Op } from 'sequelize';
+import { seedDemoCrm } from './project-demo-crm';
 import {
   Approval,
   Budget,
@@ -97,8 +98,25 @@ export class ProjectDemoService {
       if (!project)
         throw new NotFoundException('Project not found in your organization');
       const settings = (project.settings || {}) as Record<string, any>;
-      if (settings.demoDataSeed)
-        return { ...settings.demoDataSeed, alreadySeeded: true };
+      if (settings.demoDataSeed) {
+        if (settings.demoCrmSeed?.version === 1)
+          return { ...settings.demoDataSeed, alreadySeeded: true };
+        const organization = await Organization.findByPk(auth.organizationId, {
+          transaction,
+        });
+        const crm = await seedDemoCrm(
+          id,
+          auth.organizationId,
+          auth.id,
+          organization?.currency || 'EUR',
+          transaction,
+        );
+        await project.update(
+          { settings: { ...settings, demoCrmSeed: crm } },
+          { transaction },
+        );
+        return { ...settings.demoDataSeed, alreadySeeded: false };
+      }
 
       const organization = await Organization.findByPk(auth.organizationId, {
         transaction,
@@ -478,14 +496,21 @@ export class ProjectDemoService {
         ids,
         scenario,
         suggestedPrompt:
-          'Is project ke demo records se budget, cash flow, overdue tasks, sales risk aur top 5 next steps Roman Urdu mein batao. Koi action execute mat karo.',
+          "Analyze this project's demo records: budget, cash flow, overdue tasks, sales risks, and the top 5 next steps. Do not execute any actions.",
       };
+      const crm = await seedDemoCrm(
+        id,
+        auth.organizationId,
+        auth.id,
+        currency,
+        transaction,
+      );
       await project.update(
         {
           companyId,
           contactId,
           dealId,
-          settings: { ...settings, demoDataSeed: result },
+          settings: { ...settings, demoDataSeed: result, demoCrmSeed: crm },
         },
         options,
       );

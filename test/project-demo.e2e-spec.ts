@@ -12,6 +12,8 @@ import {
   Expense,
   Transaction,
   Task,
+  Deal,
+  CrmActivity,
 } from '../models';
 
 jest.setTimeout(60000);
@@ -77,9 +79,55 @@ describe('Project demo API', () => {
     expect(project.contactId).toBeTruthy();
     expect(project.dealId).toBeTruthy();
     expect((project.settings as any).retained).toBe(true);
+    const crm = (project.settings as any).demoCrmSeed;
+    expect(crm.createdCounts).toMatchObject({
+      companies: 6,
+      contacts: 12,
+      deals: 6,
+      crmActivities: 18,
+    });
+    expect(
+      await Deal.count({
+        where: { id: crm.ids.deals, organizationId: owner.organization.id },
+      }),
+    ).toBe(6);
+    expect(
+      await CrmActivity.count({
+        where: { dealId: crm.ids.deals, organizationId: owner.organization.id },
+      }),
+    ).toBe(18);
     expect((project.settings as any).demoDataSeed.scenario.cashBalance).toBe(
       4000,
     );
+  });
+
+  it('upgrades an older seed once without repeating financial records', async () => {
+    const legacy = {
+      projectId: 0,
+      ids: { budgets: [123] },
+      scenario: { cashBalance: 4000 },
+    };
+    const project = await Project.create({
+      organizationId: owner.organization.id,
+      ownerId: owner.user.id,
+      name: 'Legacy seed',
+      status: 'active',
+      settings: { retained: true, demoDataSeed: legacy },
+    });
+    const invoke = () =>
+      request(app.getHttpServer())
+        .post(`/api/projects/${project.id}/demo-data`)
+        .expect(201);
+    const responses = await Promise.all([invoke(), invoke()]);
+    expect(responses.map((r) => r.body.data.alreadySeeded).sort()).toEqual([
+      false,
+      true,
+    ]);
+    await project.reload();
+    expect((project.settings as any).demoDataSeed).toEqual(legacy);
+    expect((project.settings as any).retained).toBe(true);
+    expect((project.settings as any).demoCrmSeed.ids.deals).toHaveLength(6);
+    expect(await Budget.count({ where: { projectId: project.id } })).toBe(0);
   });
 
   it('allows another project without a token or env setting and keeps project reads protected', async () => {

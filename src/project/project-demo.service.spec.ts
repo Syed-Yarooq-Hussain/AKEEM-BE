@@ -44,7 +44,9 @@ describe('Project demo seed guards', () => {
     const seed = { projectId: 3, ids: { budgets: [7] }, alreadySeeded: false };
     jest
       .spyOn(Project, 'findOne')
-      .mockResolvedValue({ settings: { demoDataSeed: seed } } as any);
+      .mockResolvedValue({
+        settings: { demoDataSeed: seed, demoCrmSeed: { version: 1 } },
+      } as any);
     await expect(
       service.seed({ id: 1, organizationId: 2, role: 'Admin' }, 3),
     ).resolves.toEqual({ ...seed, alreadySeeded: true });
